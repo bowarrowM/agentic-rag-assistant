@@ -42,5 +42,5 @@ _(filled in as the project is built — Days 1–4)_
 ## Status
 - [x] Day 1 — ingestion (load → chunk → embed → store)
 - [x] Day 2 — retrieval + Q&A with sources
-- [ ] Day 3 — agentic tool-calling layer
+- [x] Day 3 — agentic tool-calling layer (with grounding guardrail)
 - [ ] Day 4 — FastAPI endpoint + docs
