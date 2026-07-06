@@ -1,0 +1,6 @@
+# RAG agent — fully local, no paid APIs
+chromadb          # local vector store + built-in local embeddings
+ollama            # client for the local LLM runtime (generation)
+fastapi           # serve the agent as an API
+uvicorn[standard] # ASGI server for FastAPI
+python-dotenv     # config via .env
