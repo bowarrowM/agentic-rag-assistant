@@ -1,0 +1,114 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>RAG Assistant</title>
+  <style>
+    * { box-sizing: border-box; }
+    body {
+      font-family: system-ui, -apple-system, Segoe UI, Roboto, sans-serif;
+      margin: 0; background: #0f1117; color: #e7e9ee;
+      display: flex; flex-direction: column; height: 100vh;
+    }
+    header {
+      padding: 16px 20px; border-bottom: 1px solid #222634;
+      font-weight: 600; font-size: 18px;
+    }
+    header small { display:block; font-weight:400; color:#8a90a2; font-size:13px; margin-top:2px; }
+    #chat { flex: 1; overflow-y: auto; padding: 20px; }
+    .msg { max-width: 720px; margin: 0 auto 14px; display: flex; }
+    .msg .bubble {
+      padding: 12px 16px; border-radius: 14px; white-space: pre-wrap; line-height: 1.5;
+    }
+    .user { justify-content: flex-end; }
+    .user .bubble { background: #2b6ef2; color: #fff; border-bottom-right-radius: 4px; }
+    .bot  { justify-content: flex-start; }
+    .bot .bubble { background: #1a1e2b; border: 1px solid #262b3b; border-bottom-left-radius: 4px; }
+    .sources { max-width: 720px; margin: -8px auto 14px; font-size: 12px; color: #8a90a2; }
+    form {
+      display: flex; gap: 10px; padding: 16px 20px; border-top: 1px solid #222634;
+      max-width: 760px; margin: 0 auto; width: 100%;
+    }
+    input {
+      flex: 1; padding: 12px 14px; border-radius: 10px; border: 1px solid #2b3145;
+      background: #161a26; color: #e7e9ee; font-size: 15px;
+    }
+    button {
+      padding: 12px 20px; border: 0; border-radius: 10px; background: #2b6ef2;
+      color: #fff; font-weight: 600; cursor: pointer;
+    }
+    button:disabled { opacity: 0.5; cursor: default; }
+  </style>
+</head>
+<body>
+  <header>
+    RAG Assistant
+    <small>Local, grounded answers over a knowledge base · Ollama + Chroma + FastAPI</small>
+  </header>
+
+  <div id="chat"></div>
+
+  <form id="form">
+    <input id="q" placeholder="Ask a question…" autocomplete="off" autofocus />
+    <button id="send" type="submit">Send</button>
+  </form>
+
+  <script>
+    const chat = document.getElementById("chat");
+    const form = document.getElementById("form");
+    const input = document.getElementById("q");
+    const send = document.getElementById("send");
+    let history = [];
+
+    function addBubble(text, who) {
+      const row = document.createElement("div");
+      row.className = "msg " + who;
+      const bubble = document.createElement("div");
+      bubble.className = "bubble";
+      bubble.textContent = text;
+      row.appendChild(bubble);
+      chat.appendChild(row);
+      chat.scrollTop = chat.scrollHeight;
+      return bubble;
+    }
+
+    function addSources(sources) {
+      if (!sources || !sources.length) return;
+      const el = document.createElement("div");
+      el.className = "sources";
+      el.textContent = "Sources: " + sources.join(", ");
+      chat.appendChild(el);
+      chat.scrollTop = chat.scrollHeight;
+    }
+
+    form.addEventListener("submit", async (e) => {
+      e.preventDefault();
+      const question = input.value.trim();
+      if (!question) return;
+
+      addBubble(question, "user");
+      input.value = "";
+      send.disabled = true;
+      const thinking = addBubble("Thinking…", "bot");
+
+      try {
+        const res = await fetch("/chat", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ question, history }),
+        });
+        const data = await res.json();
+        thinking.textContent = data.answer;
+        addSources(data.sources);
+        history = data.history;
+      } catch (err) {
+        thinking.textContent = "Error: " + err;
+      } finally {
+        send.disabled = false;
+        input.focus();
+      }
+    });
+  </script>
+</body>
+</html>

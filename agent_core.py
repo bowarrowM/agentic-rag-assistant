@@ -37,13 +37,32 @@ def search_documents(query):
     sources = results["metadatas"][0]          # which file each chunk came from
     return chunks, sources
 
+def condense_question(question, history):
+      """Rewrite a follow-up into a standalone question using the conversation."""
+      if not history:
+          return question                      # first turn — nothing to condense
+
+      convo = "\n".join(f"{t['role']}: {t['content']}" for t in history)
+      prompt = (
+          "Given the conversation below, rewrite the user's follow-up question "
+          "into a standalone question that makes sense on its own. "
+          "Reply with ONLY the rewritten question and nothing else.\n\n"
+          f"Conversation:\n{convo}\n\n"
+          f"Follow-up: {question}\n\n"
+          "Standalone question:"
+      )
+      resp = ollama.chat(model=MODEL, messages=[{"role": "user", "content": prompt}])
+      return resp["message"]["content"].strip()
+
+
 
 def answer(question, history=None):
     """Run the agent loop for one question. Returns (answer_text, sources_used)."""
+    standalone = condense_question(question, history)
     messages = [{"role": "system", "content": SYSTEM_PROMPT}]
     if history:
-        messages += history                     # earlier turns, for memory (Step 3)
-    messages.append({"role": "user", "content": question})
+        messages += history                     
+    messages.append({"role": "user", "content": standalone})
 
     used_sources = []
 
