@@ -1,74 +1,111 @@
-# RAG Assistant
+# Kitty Pay — Support Assistant
 
-A conversational, retrieval-augmented assistant that answers questions over a document set
-using a **local LLM** (via Ollama) and a **local vector store** (Chroma) — no paid APIs,
-no API keys, runs entirely on your machine.
+An **agentic RAG** customer-support assistant for **Kitty Pay**, a fictional digital-wallet
+fintech. It answers account, fee, transfer, refund, and security questions **grounded strictly
+in the help-center docs**, and **escalates disputes and unauthorized-payment reports to a human**
+by opening a ticket.
 
-Every answer is **grounded** in retrieved source documents and reports **which files it used**,
-so retrieval is inspectable. The assistant holds a **multi-turn conversation** and rewrites
-follow-up questions into standalone queries so retrieval stays accurate across a dialogue.
+Runs entirely **locally and free** — a local LLM (Ollama) and a local vector store (Chroma), no
+paid APIs, no keys.
 
-Built to be **hardware-ready**: the retrieval core is exposed over an HTTP API, so a physical
-sensor/component can plug in later as another client.
+> **Why a fintech, and why grounding matters.** In a payments product, a support bot that invents
+> a fee, a limit, or a refund policy is a compliance and trust failure — not a cosmetic bug. So
+> grounding, source attribution, self-verification, and human escalation aren't nice-to-haves
+> here; they're the requirements the whole design is built around.
+
+## What it does
+
+- **Answers from the knowledge base** — grounded in `documents/`, and reports which files it used.
+- **Routes between two tools** — it *decides* whether to search the docs or open a support ticket.
+  A question about fees → search; "someone charged my account without permission" → escalate.
+- **Verifies its own answers** — an LLM-as-judge checks each grounded answer against the retrieved
+  context and surfaces a `SUPPORTED` / `UNSUPPORTED` verdict.
+- **Shows its work** — the API returns an **agent trace** (condense → tool calls → verification),
+  rendered live in the UI, so every decision is inspectable.
 
 ## Demo
 
-A small chat UI is served at `/`, and an interactive API (Swagger) at `/docs`.
-
 ```
-You:  How do I get a refund?
-Bot:  You can request a full refund within 14 days of any payment, no questions asked —
-      contact support@nimbus.example. Refunds are processed within 5–10 business days.
+You:  how much can I send per day, and how long do refunds take?
+Bot:  Unverified accounts can send up to €500 per day; fully verified accounts up to €10,000 per
+      day and €50,000 per month. Merchant refunds are returned to your balance in 5–10 business days.
       Sources: product_faq.md, support_policies.md
+      Trace:  condense · search_documents · verify ✓ grounded
 
-You:  How long does it take?
-Bot:  It typically takes 5 to 10 business days to receive a refund after requesting one.
-      Sources: support_policies.md, product_faq.md
+You:  someone made a payment from my account I didn't authorize
+Bot:  I've opened a support ticket (TICK-410D12) for our team to investigate. Please freeze your
+      wallet from Settings → Security in the meantime.
+      Trace:  condense · create_support_ticket → {ticket_id: TICK-410D12, status: open}
 ```
 
-The second question never says "refund" — the assistant condenses it into a standalone
-question using the conversation history, so retrieval still finds the right chunk.
+The React client (`web/`) renders each answer with its **source chips** and an expandable
+**agent-trace panel**.
 
 ## Architecture
 
 ```
-documents/ ──▶ ingest ──▶ chunk (overlap) ──▶ embed (local) ──▶ Chroma vector store
-                                                                      │
-follow-up + history ──▶ condense to standalone question              │
-                                    │                                │
-                                    ▼                                │
-                        embed ──▶ retrieve top-k chunks ◀────────────┘
-                                    │
-                                    ▼
-              local LLM (Ollama) + tool-calling ──▶ grounded answer + sources
-                                    │
-                                    ▼
-                  FastAPI:  GET /  (chat UI)  ·  POST /chat  (JSON API)
+documents/ ─▶ ingest ─▶ chunk (overlap) ─▶ embed (local) ─▶ Chroma vector store
+                                                                   │
+user + history ─▶ condense to standalone question                 │
+                              │                                    │
+                              ▼          agent loop (step-capped)  │
+                    local LLM decides which tool: ─────────────────┤
+                              │                                    │
+              ┌───────────────┴────────────────┐                  │
+              ▼                                 ▼                  │
+      search_documents ◀── retrieve top-k ──────┘         create_support_ticket
+              │                                                    │
+              ▼                                                    ▼
+      grounded answer ─▶ verify (LLM-as-judge, advisory)     ticket {id, status}
+              │
+              ▼
+   FastAPI  POST /chat  ─▶  { answer, sources, trace, history }
+              │
+              ▼
+   React + TypeScript SPA  (chat · source chips · agent-trace panel)
 ```
 
 ## Key features
 
-- **Agentic tool-calling** — the LLM decides when to search the knowledge base, via an
-  Ollama tool schema, inside a loop with a **step cap** guardrail against runaway calls.
-- **Grounding guardrail** — a system prompt constrains the model to answer only from
-  retrieved context and to say "I don't know" otherwise, reducing hallucination.
-- **Multi-turn memory** — conversation history is passed with each request (stateless
-  server; the client holds the transcript).
-- **Query rewriting (condense-question)** — follow-ups like "how long does it take?" are
-  rewritten into standalone questions before retrieval, so context-dependent turns work.
-- **Source attribution** — every answer reports which document(s) it drew from.
-- **Fully local & free** — Ollama for generation/tool-calling, Chroma for vectors +
-  embeddings. No external API, no key, no cost.
+- **Agentic tool-calling with real routing** — two tools (`search_documents`,
+  `create_support_ticket`) so the model makes a genuine decision each turn, inside a loop with a
+  **step-cap** guardrail against runaway calls.
+- **Grounding guardrail** — a system prompt constrains the model to answer only from retrieved
+  context and to say "I don't know" otherwise.
+- **Answer verification (LLM-as-judge)** — a second model call checks the answer against the
+  retrieved context; the verdict is surfaced in the trace (see *Design decisions* for why it's
+  advisory, not blocking).
+- **Human escalation** — disputes and unauthorized-payment reports open a ticket instead of being
+  answered from docs, modeling the real fintech pattern of handing sensitive money issues to a person.
+- **Query rewriting (condense-question)** — follow-ups are rewritten into standalone questions
+  before retrieval, so multi-turn conversation works.
+- **Agent trace** — the pipeline's steps are returned to the client and rendered, making the
+  agent's reasoning observable rather than a black box.
+- **Source attribution** — every grounded answer reports which document(s) it drew from.
+- **Fully local & free** — Ollama for generation/tool-calling/judging, Chroma for vectors + embeddings.
+
+## Design decisions
+
+- **Verification is advisory, not blocking.** An early version hard-gated on the judge and fell
+  back to "I can't confirm that" whenever it returned `UNSUPPORTED`. Testing showed a small local
+  judge is **noisy** — it rejected correct, grounded answers (false negatives). Hard-gating on an
+  unreliable judge makes the product *worse*, so the verdict is surfaced as an **advisory signal**
+  in the trace. A stronger judge model would be needed to gate on it in production.
+- **Stateless server, client-held transcript.** The API is stateless; the client passes the
+  conversation history each turn. Simpler to scale, and the client owns its own state.
+- **Local 3B model for zero cost.** A deliberate cost/quality trade-off. The model occasionally
+  drifts or skips the search tool despite the prompt; the grounding and verification layers exist
+  precisely to catch that.
 
 ## Stack
 
-- **Ollama** (`llama3.2:3b`) — local LLM, generation + tool-calling
-- **Chroma** — local vector database with built-in local embeddings
-- **FastAPI + Uvicorn** — HTTP API and static chat UI
-- **Pydantic** — typed request/response contracts
+- **Backend:** Python · FastAPI + Uvicorn · Pydantic (typed request/response contracts)
+- **LLM / RAG:** Ollama (`llama3.2:3b`) · Chroma (local vectors + embeddings)
+- **Frontend:** React + TypeScript (Vite) · typed API client · CSS
 
-## Setup
+## Setup & run
 
+**Backend** (terminal 1):
 ```bash
 python3.12 -m venv .venv
 source .venv/bin/activate
@@ -76,48 +113,34 @@ pip install -r requirements.txt
 
 # Install Ollama (https://ollama.com), then pull the model:
 ollama pull llama3.2:3b
+
+python ingest.py          # build the vector store (run once, or after editing documents/)
+uvicorn app:app --reload  # API on http://127.0.0.1:8000  (Swagger at /docs)
 ```
 
-## Usage
-
+**Frontend** (terminal 2):
 ```bash
-# 1. Ingest the documents into the vector store (run once, or after editing documents/)
-python ingest.py
-
-# 2. Start the server
-uvicorn app:app --reload
-
-# 3. Open the chat UI
-#    http://127.0.0.1:8000/          → web chat
-#    http://127.0.0.1:8000/docs      → interactive API
+cd web
+npm install
+npm run dev                # UI on http://localhost:5173
 ```
 
-Swap the files in `documents/` for your own knowledge base, re-run `python ingest.py`,
-and the assistant answers over your content.
+Swap the files in `documents/` for your own knowledge base, re-run `python ingest.py`, and the
+assistant answers over your content.
 
 ## Project layout
 
 ```
 ingest.py        Load → chunk (with overlap) → embed → store in Chroma
-agent_core.py    The agent: condense-question, tool-calling loop, grounding, sources
-app.py           FastAPI app: GET / (chat UI) and POST /chat (JSON API)
-index.html       Minimal web chat client
-documents/       The knowledge base (Markdown)
+agent_core.py    The agent: condense-question, tool routing, verification, trace
+app.py           FastAPI: POST /chat  → { answer, sources, trace, history }  (+ CORS)
+documents/       The knowledge base (Markdown help-center docs)
+web/             React + TypeScript client (chat, source chips, agent-trace panel)
 ```
 
-## Notes & limitations
+## Limitations & next steps
 
-- Uses a small 3B local model for zero cost; it occasionally drifts beyond the source
-  text despite the grounding prompt. A larger model (or an added answer-verification /
-  LLM-as-judge pass) would tighten this — a deliberate cost/quality trade-off.
-- Chunking is fixed-size with overlap. Semantic or structure-aware chunking would improve
-  retrieval on longer, mixed-topic documents.
-
-## Roadmap
-
-- [x] Ingestion (load → chunk → embed → store)
-- [x] Retrieval + grounded Q&A with sources
-- [x] Agentic tool-calling loop (step-cap + grounding guardrails)
-- [x] Multi-turn memory + query rewriting
-- [x] FastAPI `/chat` API + web chat UI
-- [ ] Hardware client (physical component talks to `/chat`)
+- Small local judge is noisy — a stronger model would allow hard-gating on the verdict.
+- Fixed-size chunking with overlap; semantic or structure-aware chunking + reranking would
+  improve retrieval precision on longer, mixed-topic docs.
+- Tickets are a mock (a real deployment would call a ticketing backend such as Zendesk/Jira).

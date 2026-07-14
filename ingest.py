@@ -34,7 +34,7 @@ print(f"Total chunks: {len(all_chunks)}")
 # STORE
 
 client  = chromadb.PersistentClient(path="chroma_db")
-collection = client.get_or_create_collection("nimbus_docs")
+collection = client.get_or_create_collection("kitty_docs")
 
 texts = [chunk for (name, chunk) in all_chunks]
 ids = [f"chunk-{i}" for i in range(len(all_chunks))]
