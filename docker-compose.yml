@@ -1,0 +1,40 @@
+services:
+  ollama:
+    image: ollama/ollama:latest
+    container_name: kitty-ollama
+    volumes:
+      - ollama_models:/root/.ollama       # persist the pulled model
+    # No host port needed — the backend reaches Ollama over the internal network
+    # (ollama:11434), so this won't clash with a native Ollama on the host.
+    healthcheck:
+      test: ["CMD-SHELL", "ollama list || exit 1"]
+      interval: 10s
+      timeout: 5s
+      retries: 12
+
+  backend:
+    build: .
+    container_name: kitty-backend
+    environment:
+      - OLLAMA_HOST=http://ollama:11434   # the ollama python client reads this
+    volumes:
+      - chroma_data:/app/chroma_db        # persist the vector store
+      - chroma_cache:/root/.cache/chroma  # persist the local embedding model
+    ports:
+      - "8000:8000"
+    depends_on:
+      ollama:
+        condition: service_healthy
+
+  frontend:
+    build: ./web
+    container_name: kitty-frontend
+    ports:
+      - "5173:80"
+    depends_on:
+      - backend
+
+volumes:
+  ollama_models:
+  chroma_data:
+  chroma_cache:

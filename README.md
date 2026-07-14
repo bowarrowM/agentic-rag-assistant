@@ -102,8 +102,26 @@ user + history ─▶ condense to standalone question                 │
 - **Backend:** Python · FastAPI + Uvicorn · Pydantic (typed request/response contracts)
 - **LLM / RAG:** Ollama (`llama3.2:3b`) · Chroma (local vectors + embeddings)
 - **Frontend:** React + TypeScript (Vite) · typed API client · CSS
+- **Infra:** Docker + Docker Compose (backend, frontend/nginx, Ollama) · one-command `setup.sh`
 
-## Setup & run
+## Run with Docker (recommended)
+
+Everything is containerized — the FastAPI backend, the React frontend (nginx), and the Ollama
+LLM runtime. One command builds the images, pulls the model, ingests the docs, and starts it all:
+
+```bash
+./setup.sh
+```
+
+Then open **http://localhost:5173** for the chat UI (API docs at **http://localhost:8000/docs**).
+First run downloads the base images and the ~2GB model, so give it a few minutes; later runs are fast.
+
+```bash
+docker compose down       # stop
+docker compose down -v    # stop and wipe the model + vector store
+```
+
+## Run manually (without Docker)
 
 **Backend** (terminal 1):
 ```bash
@@ -131,11 +149,14 @@ assistant answers over your content.
 ## Project layout
 
 ```
-ingest.py        Load → chunk (with overlap) → embed → store in Chroma
-agent_core.py    The agent: condense-question, tool routing, verification, trace
-app.py           FastAPI: POST /chat  → { answer, sources, trace, history }  (+ CORS)
-documents/       The knowledge base (Markdown help-center docs)
-web/             React + TypeScript client (chat, source chips, agent-trace panel)
+ingest.py            Load → chunk (with overlap) → embed → store in Chroma
+agent_core.py        The agent: condense-question, tool routing, verification, trace
+app.py               FastAPI: POST /chat  → { answer, sources, trace, history }  (+ CORS)
+documents/           The knowledge base (Markdown help-center docs)
+web/                 React + TypeScript client (+ its own Dockerfile + nginx)
+Dockerfile           Backend image (FastAPI + agent)
+docker-compose.yml   Orchestrates ollama + backend + frontend
+setup.sh             One command: build → pull model → ingest → run
 ```
 
 ## Limitations & next steps

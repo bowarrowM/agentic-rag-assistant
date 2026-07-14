@@ -1,0 +1,9 @@
+# Keep the backend build context small and clean.
+.venv/
+__pycache__/
+*.pyc
+*.log
+.git/
+.env
+chroma_db/          # provided at runtime via a Docker volume
+web/                # frontend is built in its own image
