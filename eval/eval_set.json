@@ -1,0 +1,117 @@
+{
+  "description": "Gold evaluation set for the Kitty Pay agentic RAG assistant. Each item is grounded in the real content of documents/product_faq.md and documents/support_policies.md. Used by run_eval.py to measure retrieval recall@k, answer faithfulness, and tool-routing accuracy.",
+  "items": [
+    {
+      "id": "fee-credit-topup",
+      "question": "What fee do I pay to top up with a credit card?",
+      "expected_behavior": "answer",
+      "expected_source": "product_faq.md",
+      "must_retrieve": ["1.5%"],
+      "answer_must_contain": ["1.5"]
+    },
+    {
+      "id": "limit-unverified-daily",
+      "question": "How much can I send per day if my account isn't verified?",
+      "expected_behavior": "answer",
+      "expected_source": "product_faq.md",
+      "must_retrieve": ["500"],
+      "answer_must_contain": ["500"]
+    },
+    {
+      "id": "limit-verified-monthly",
+      "question": "What is the monthly sending limit on a fully verified account?",
+      "expected_behavior": "answer",
+      "expected_source": "product_faq.md",
+      "must_retrieve": ["50,000"],
+      "answer_must_contain": ["50,000"]
+    },
+    {
+      "id": "fee-currency-conversion",
+      "question": "Is there a charge for spending in another currency?",
+      "expected_behavior": "answer",
+      "expected_source": "product_faq.md",
+      "must_retrieve": ["0.9%"],
+      "answer_must_contain": ["0.9"]
+    },
+    {
+      "id": "refund-timeframe",
+      "question": "How long does a merchant refund take to reach my balance?",
+      "expected_behavior": "answer",
+      "expected_source": "product_faq.md",
+      "must_retrieve": ["5 to 10 business days"],
+      "answer_must_contain": ["5", "10"]
+    },
+    {
+      "id": "cards-prepaid",
+      "question": "Can I use a prepaid card with Kitty Pay?",
+      "expected_behavior": "answer",
+      "expected_source": "product_faq.md",
+      "must_retrieve": ["Prepaid cards are not supported"],
+      "answer_must_contain": ["not"]
+    },
+    {
+      "id": "security-encryption",
+      "question": "How is my money and data protected?",
+      "expected_behavior": "answer",
+      "expected_source": "product_faq.md",
+      "must_retrieve": ["AES-256"],
+      "answer_must_contain": ["AES-256"]
+    },
+    {
+      "id": "withdraw-bank-time",
+      "question": "How long does it take to withdraw my balance to my bank account?",
+      "expected_behavior": "answer",
+      "expected_source": "product_faq.md",
+      "must_retrieve": ["1-3 business days", "1–3 business days"],
+      "answer_must_contain": ["business day"]
+    },
+    {
+      "id": "data-export-format",
+      "question": "Can I download my transaction history, and in what format?",
+      "expected_behavior": "answer",
+      "expected_source": "support_policies.md",
+      "must_retrieve": ["CSV"],
+      "answer_must_contain": ["CSV"]
+    },
+    {
+      "id": "uptime-target",
+      "question": "What uptime does Kitty Pay promise?",
+      "expected_behavior": "answer",
+      "expected_source": "support_policies.md",
+      "must_retrieve": ["99.9%"],
+      "answer_must_contain": ["99.9"]
+    },
+    {
+      "id": "security-response-time",
+      "question": "How fast will a human respond to a security problem?",
+      "expected_behavior": "answer",
+      "expected_source": "support_policies.md",
+      "must_retrieve": ["4 hours"],
+      "answer_must_contain": ["4 hour"]
+    },
+    {
+      "id": "ticket-unauthorized",
+      "question": "There's a payment on my account that I never made. Someone used my wallet.",
+      "expected_behavior": "ticket",
+      "expected_source": null,
+      "must_retrieve": [],
+      "answer_must_contain": []
+    },
+    {
+      "id": "ticket-wrong-person",
+      "question": "I accidentally sent money to the wrong person, I need someone to get it back.",
+      "expected_behavior": "ticket",
+      "expected_source": null,
+      "must_retrieve": [],
+      "answer_must_contain": []
+    },
+    {
+      "id": "refuse-out-of-scope",
+      "question": "Can I buy Bitcoin or trade stocks inside Kitty Pay?",
+      "expected_behavior": "refuse",
+      "expected_source": null,
+      "must_retrieve": [],
+      "answer_must_contain": []
+    }
+  ]
+}
