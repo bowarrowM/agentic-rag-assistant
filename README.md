@@ -97,6 +97,32 @@ user + history ─▶ condense to standalone question                 │
   drifts or skips the search tool despite the prompt; the grounding and verification layers exist
   precisely to catch that.
 
+## Evaluation
+
+Retrieval and agent behavior are measured with a small, **reproducible eval harness** (`eval/`)
+over a hand-built set of **14 labeled questions** — answerable, ticket-worthy, and out-of-scope —
+each tagged with its expected behavior, gold source document, and the specific fact the answer
+must contain. Improvements here are made *against the harness*, not by eyeballing outputs.
+
+**Retrieval** — `python eval/run_eval.py` (fast, no LLM required):
+
+| Metric (top-k = 3) | Result |
+|---|---|
+| Source hit-rate | 11/11 (100%) |
+| Mean fact recall | 0.91 |
+| Perfect fact recall | 10/11 (91%) |
+
+Moving from a naive fixed-size split to overlapping chunking lifted mean fact recall@3 from an
+earlier **0.73 to 0.91** — a measured change, not a guess.
+
+**End-to-end** — `python eval/run_eval.py --full` (needs Ollama) additionally scores:
+
+- **Tool-routing accuracy** — did the agent search vs. open a ticket vs. decline, as expected?
+- **Faithfulness** — share of grounded answers the LLM-as-judge marks `SUPPORTED` against context.
+- **Answer correctness** — does the final answer contain the required facts?
+
+Every metric reproduces from the repo root with one command.
+
 ## Stack
 
 - **Backend:** Python · FastAPI + Uvicorn · Pydantic (typed request/response contracts)

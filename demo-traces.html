@@ -1,0 +1,158 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Kitty Pay Support Agent — Execution Traces</title>
+<style>
+  :root{
+    --bg:#fbfbfa; --panel:#fff; --ink:#1a1a18; --muted:#6b6b66;
+    --line:#e3e3df; --code:#f6f6f4; --accent:#2f5d50;
+    --ok:#1e7a5a; --okbg:#e6f4ee; --warn:#9a4b1f; --warnbg:#fbeee5;
+  }
+  @media (prefers-color-scheme: dark){
+    :root{
+      --bg:#16171a; --panel:#1d1f23; --ink:#e8e8e4; --muted:#9a9a94;
+      --line:#2c2f34; --code:#212429; --accent:#7fbfa8;
+      --ok:#6fce9f; --okbg:#16302a; --warn:#e0a276; --warnbg:#33231a;
+    }
+  }
+  *{box-sizing:border-box}
+  body{margin:0;background:var(--bg);color:var(--ink);
+    font:16px/1.55 -apple-system,BlinkMacSystemFont,"Segoe UI",Inter,Roboto,sans-serif;}
+  .wrap{max-width:900px;margin:0 auto;padding:44px 24px 80px}
+  header{border-bottom:1px solid var(--line);padding-bottom:22px;margin-bottom:34px}
+  h1{margin:0 0 8px;font-size:25px;letter-spacing:-.02em;font-weight:650}
+  .sub{color:var(--muted);font-size:14.5px;margin:0}
+  .specs{display:flex;flex-wrap:wrap;gap:7px;margin-top:16px}
+  .chip{font:12.5px/1 ui-monospace,SFMono-Regular,Menlo,monospace;
+    background:var(--code);border:1px solid var(--line);color:var(--muted);
+    padding:6px 9px;border-radius:5px}
+  .case{background:var(--panel);border:1px solid var(--line);border-radius:10px;
+    padding:24px;margin-bottom:22px}
+  .chead{display:flex;justify-content:space-between;align-items:baseline;gap:16px;flex-wrap:wrap}
+  .label{font-size:12px;text-transform:uppercase;letter-spacing:.09em;
+    color:var(--accent);font-weight:700}
+  .lat{font:12.5px/1 ui-monospace,Menlo,monospace;color:var(--muted)}
+  .q{font-size:18px;font-weight:600;margin:9px 0 18px;letter-spacing:-.01em}
+  .q::before{content:"› ";color:var(--muted)}
+  h3{font-size:11.5px;text-transform:uppercase;letter-spacing:.09em;
+    color:var(--muted);margin:20px 0 8px;font-weight:700}
+  pre{background:var(--code);border:1px solid var(--line);border-radius:7px;
+    padding:14px 16px;overflow-x:auto;margin:0;
+    font:13px/1.65 ui-monospace,SFMono-Regular,Menlo,monospace}
+  .ans{background:var(--code);border-left:3px solid var(--accent);
+    border-radius:0 7px 7px 0;padding:13px 16px;font-size:14.5px}
+  .badge{display:inline-block;font:11.5px/1 ui-monospace,Menlo,monospace;
+    padding:5px 9px;border-radius:4px;font-weight:700;letter-spacing:.04em}
+  .b-ok{background:var(--okbg);color:var(--ok)}
+  .b-warn{background:var(--warnbg);color:var(--warn)}
+  .note{font-size:14px;color:var(--muted);border-top:1px solid var(--line);
+    margin-top:18px;padding-top:14px}
+  .note b{color:var(--ink);font-weight:600}
+  footer{color:var(--muted);font-size:13.5px;border-top:1px solid var(--line);
+    padding-top:18px;margin-top:34px}
+</style>
+</head>
+<body>
+<div class="wrap">
+
+<header>
+  <h1>Kitty Pay Support Agent — Execution Traces</h1>
+  <p class="sub">Agentic RAG assistant. Every turn logs the rewritten query, the tool chosen with its
+  generated arguments, the documents retrieved, and a groundedness verdict.</p>
+  <div class="specs">
+    <span class="chip">llama3.2:3b · local via Ollama</span>
+    <span class="chip">ChromaDB · top-k 3</span>
+    <span class="chip">step cap 5</span>
+    <span class="chip">temperature 0</span>
+    <span class="chip">tools: search_documents · create_support_ticket</span>
+  </div>
+</header>
+
+<!-- CASE 1 -->
+<div class="case">
+  <div class="chead"><span class="label">Case 1 — grounded answer</span><span class="lat">87.2 s</span></div>
+  <div class="q">how long does a refund take?</div>
+
+  <h3>Trace</h3>
+<pre>{'type': 'condense',   'standalone': 'how long does a refund take?'}
+{'type': 'tool_call',  'tool': 'search_documents',
+                       'args': {'query': 'refund processing time Kitty Pay'},
+                       'sources': ['support_policies.md',
+                                   'support_policies.md',
+                                   'product_faq.md']}
+{'type': 'verify',     'verdict': 'SUPPORTED'}</pre>
+
+  <h3>Answer <span class="badge b-ok">SUPPORTED</span></h3>
+  <div class="ans">Refunds from Kitty Pay typically take <b>5 to 10 business days</b> to be returned to your
+  balance after a merchant approves them. If you're having trouble getting a refund directly from the
+  merchant, you can open a dispute through Kitty Pay's support system, and an agent will review it for you.</div>
+
+  <div class="note"><b>Note.</b> The model generated its own retrieval query
+  (<code>"refund processing time Kitty Pay"</code>) rather than searching the raw user text.
+  Sources are tracked per chunk so any answer can be traced back to the document it came from.</div>
+</div>
+
+<!-- CASE 2 -->
+<div class="case">
+  <div class="chead"><span class="label">Case 2 — escalation / human handoff</span><span class="lat">19.3 s</span></div>
+  <div class="q">someone sent money from my account without permission</div>
+
+  <h3>Trace</h3>
+<pre>{'type': 'condense',   'standalone': 'someone sent money from my account without permission'}
+{'type': 'tool_call',  'tool': 'create_support_ticket',
+                       'args': {'summary': 'Unauthorized payment from my account',
+                                'email': 'unknown'},
+                       'result': {'ticket_id': 'TICK-00EE67',
+                                  'summary': 'Unauthorized payment from my account',
+                                  'email': 'unknown',
+                                  'status': 'open'}}</pre>
+
+  <h3>Answer</h3>
+  <div class="ans">I've created a support ticket for you. Can you please provide me with more information
+  about the unauthorized transaction? What was the amount sent, and when did it happen?</div>
+
+  <div class="note"><b>Note.</b> The agent routed to the escalation tool instead of retrieval — the routing
+  decision is what makes the loop meaningful rather than decorative. A fraud report is not a
+  knowledge-base question, and the correct behaviour is to hand off to a human rather than answer.
+  No groundedness check runs here because no documents were retrieved.</div>
+</div>
+
+<!-- CASE 3 -->
+<div class="case">
+  <div class="chead"><span class="label">Case 3 — ungrounded answer, caught</span><span class="lat">65.6 s</span></div>
+  <div class="q">can I buy bitcoin with kitty pay?</div>
+
+  <h3>Trace</h3>
+<pre>{'type': 'condense',   'standalone': 'can I buy bitcoin with kitty pay?'}
+{'type': 'tool_call',  'tool': 'search_documents',
+                       'args': {'query': 'buying bitcoin with kitty pay'},
+                       'sources': ['product_faq.md',
+                                   'product_faq.md',
+                                   'product_faq.md']}
+{'type': 'verify',     'verdict': 'UNSUPPORTED'}</pre>
+
+  <h3>Answer <span class="badge b-warn">UNSUPPORTED</span></h3>
+  <div class="ans">No, buying bitcoin is not directly available with Kitty Pay. However, you can buy other
+  cryptocurrencies like Bitcoin through a partner exchange within the app.</div>
+
+  <div class="note"><b>Note.</b> The corpus contains no crypto content at all. Retrieval returned the three
+  nearest chunks by similarity — none of them relevant — and the model fabricated a "partner exchange"
+  rather than saying it didn't know. The answer is also self-contradictory.
+  <b>The groundedness check flagged it <code>UNSUPPORTED</code>.</b>
+  The verdict is currently <b>advisory</b>: it is recorded in the trace, it does not block the response.
+  The judge is the same 3B model that produced the answer, and its false-negative rate has not been
+  measured — so promoting it to a hard gate would risk blocking correct answers. Building that
+  measurement is the prerequisite for gating.</div>
+</div>
+
+<footer>
+  Retrieval failure and generation failure are separated deliberately: if the retrieved chunks are wrong,
+  the fix is in retrieval; if the chunks are right and the answer is still wrong, the fix is in generation.
+  The trace is what makes that distinction visible.
+</footer>
+
+</div>
+</body>
+</html>
